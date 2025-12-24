@@ -1,87 +1,60 @@
 """
 llm_manager.py
-Cloud Gemini wrapper for two-model setup:
-- ask_gemini_standard: fast responses
-- ask_gemini_reasoning: deep reasoning
+Gemini wrapper (STANDARD + REASONING)
 Compatible with latest google-generativeai SDK
 """
 
 import os
-from typing import Optional
 from app.config import GEMINI_KEY
 from app.utils_cleaner import clean_text
 
-# ----------------------------
-# Safe Gemini import
-# ----------------------------
+# Safe import
 GEMINI_AVAILABLE = False
-
 try:
     import google.generativeai as genai
     genai.configure(api_key=GEMINI_KEY)
-    GEMINI_AVAILABLE = bool(GEMINI_KEY)
+    GEMINI_AVAILABLE = True
 except Exception as e:
     GEMINI_AVAILABLE = False
-    _IMPORT_ERROR = str(e)
 
-# ----------------------------
-# Models (from env)
-# ----------------------------
 STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "gemini-1.5-flash")
 REASONING_MODEL = os.getenv("GEMINI_REASON_MODEL", "gemini-2.0-flash-thinking")
 
 
-# ----------------------------
-# Internal helper
-# ----------------------------
-def _run_gemini(model_name: str, prompt: str, max_tokens: int) -> str:
+async def _ask(model_name: str, prompt: str, max_tokens: int) -> str:
     if not GEMINI_AVAILABLE:
-        return "[Gemini unavailable] GOOGLE_API_KEY missing or invalid"
+        return "[Gemini unavailable] Check GOOGLE_API_KEY"
 
     try:
         model = genai.GenerativeModel(model_name)
-
         response = model.generate_content(
             prompt,
             generation_config={
                 "max_output_tokens": max_tokens,
-                "temperature": 0.7,
-            }
+                "temperature": 0.6,
+            },
         )
 
-        # New SDK returns response.text
-        text = getattr(response, "text", None)
+        if hasattr(response, "text"):
+            return clean_text(response.text)
 
-        if not text:
-            return "[Gemini returned empty response]"
-
-        return clean_text(text)
+        return clean_text(str(response))
 
     except Exception as e:
         return f"[Gemini error] {e}"
 
 
-# ----------------------------
-# Public APIs
-# ----------------------------
 async def ask_gemini_standard(prompt: str, max_tokens: int = 512) -> str:
-    """
-    Fast / short answers
-    """
-    return _run_gemini(STANDARD_MODEL, prompt, max_tokens)
+    """Fast / short response"""
+    return await _ask(STANDARD_MODEL, prompt, max_tokens)
 
 
 async def ask_gemini_reasoning(prompt: str, max_tokens: int = 1024) -> str:
-    """
-    Deep reasoning answers
-    """
-    return _run_gemini(REASONING_MODEL, prompt, max_tokens)
+    """Deep reasoning response"""
+    return await _ask(REASONING_MODEL, prompt, max_tokens)
 
 
 async def ask_gemini(prompt: str, reasoning: bool = False) -> str:
-    """
-    Auto router
-    """
     if reasoning:
         return await ask_gemini_reasoning(prompt)
     return await ask_gemini_standard(prompt)
