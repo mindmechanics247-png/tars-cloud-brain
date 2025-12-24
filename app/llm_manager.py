@@ -1,60 +1,87 @@
 """
 llm_manager.py
 Cloud Gemini wrapper for two-model setup:
-- ask_gemini_standard: fast/short answers (gemini-1.5-flash or your choosing)
-- ask_gemini_reasoning: deep reasoning (gemini-2.0-flash-thinking or your choosing)
-Uses google.generativeai client if available.
+- ask_gemini_standard: fast responses
+- ask_gemini_reasoning: deep reasoning
+Compatible with latest google-generativeai SDK
 """
 
-import asyncio
 import os
 from typing import Optional
 from app.config import GEMINI_KEY
 from app.utils_cleaner import clean_text
 
-# Safe import block
+# ----------------------------
+# Safe Gemini import
+# ----------------------------
 GEMINI_AVAILABLE = False
+
 try:
-    import google.generativeai as genai  # pip package: google-generativeai
+    import google.generativeai as genai
     genai.configure(api_key=GEMINI_KEY)
     GEMINI_AVAILABLE = bool(GEMINI_KEY)
-except Exception:
+except Exception as e:
     GEMINI_AVAILABLE = False
+    _IMPORT_ERROR = str(e)
 
-# Default model names (you can override in .env/config)
-STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "models/text-bison-001")  # quick chat
-REASONING_MODEL = os.getenv("GEMINI_REASON_MODEL", "models/text-bison-001")    # replace with reasoning model if available
+# ----------------------------
+# Models (from env)
+# ----------------------------
+STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "gemini-1.5-flash")
+REASONING_MODEL = os.getenv("GEMINI_REASON_MODEL", "gemini-2.0-flash-thinking")
 
+
+# ----------------------------
+# Internal helper
+# ----------------------------
+def _run_gemini(model_name: str, prompt: str, max_tokens: int) -> str:
+    if not GEMINI_AVAILABLE:
+        return "[Gemini unavailable] GOOGLE_API_KEY missing or invalid"
+
+    try:
+        model = genai.GenerativeModel(model_name)
+
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "max_output_tokens": max_tokens,
+                "temperature": 0.7,
+            }
+        )
+
+        # New SDK returns response.text
+        text = getattr(response, "text", None)
+
+        if not text:
+            return "[Gemini returned empty response]"
+
+        return clean_text(text)
+
+    except Exception as e:
+        return f"[Gemini error] {e}"
+
+
+# ----------------------------
+# Public APIs
+# ----------------------------
 async def ask_gemini_standard(prompt: str, max_tokens: int = 512) -> str:
     """
-    Short/fast answer using the standard Gemini model.
+    Fast / short answers
     """
-    if not GEMINI_AVAILABLE:
-        return "[Gemini unavailable] Please set GEMINI_API_KEY in .env"
-    try:
-        # Use genai.generate_text or genai.Model.generate depending on package version
-        response = genai.generate_text(model=STANDARD_MODEL, input=prompt, max_output_tokens=max_tokens)
-        # response shape may differ by version. Try common fields:
-        text = getattr(response, "text", None) or (response.get("candidates")[0].get("content") if isinstance(response, dict) and response.get("candidates") else str(response))
-        return clean_text(text)
-    except Exception as e:
-        return f"[Gemini standard error] {e}"
+    return _run_gemini(STANDARD_MODEL, prompt, max_tokens)
+
 
 async def ask_gemini_reasoning(prompt: str, max_tokens: int = 1024) -> str:
     """
-    Longer, chain-of-thought style generation using the reasoning model.
+    Deep reasoning answers
     """
-    if not GEMINI_AVAILABLE:
-        return "[Gemini unavailable] Please set GEMINI_API_KEY in .env"
-    try:
-        response = genai.generate_text(model=REASONING_MODEL, input=prompt, max_output_tokens=max_tokens)
-        text = getattr(response, "text", None) or (response.get("candidates")[0].get("content") if isinstance(response, dict) and response.get("candidates") else str(response))
-        return clean_text(text)
-    except Exception as e:
-        return f"[Gemini reasoning error] {e}"
+    return _run_gemini(REASONING_MODEL, prompt, max_tokens)
 
-# Optional helper that tries reasoning first, falls back to standard.
+
 async def ask_gemini(prompt: str, reasoning: bool = False) -> str:
+    """
+    Auto router
+    """
     if reasoning:
         return await ask_gemini_reasoning(prompt)
     return await ask_gemini_standard(prompt)
