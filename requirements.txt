@@ -1,27 +1,16 @@
 fastapi
-uvicorn[standard]
+uvicorn
 python-dotenv
 requests
 pydantic
 aiohttp
-websockets
-python-multipart
 
-# Gemini AI
-google-generativeai==0.5.4
+# Gemini
+google-generativeai==0.7.2
 
 # Memory
 sentence-transformers
 faiss-cpu
 
-# Automation
+# N8N
 pycurl
-
-# Optional (keep only if actually used)
-openai
-tiktoken
-# LiveKit Agent Framework
-livekit
-livekit-agents
-livekit-plugins-openai
-livekit-plugins-elevenlabs

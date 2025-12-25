@@ -1,15 +1,15 @@
-# server.py
-
 import asyncio
-from livekit.agents import AgentServer
-from agent.agent import tars_agent
+from fastapi import FastAPI
+from app.router_ai import router as ai_router
 
-server = AgentServer()
+app = FastAPI(title="TARS Cloud Brain")
 
-@server.agent()
-async def start_agent(ctx):
-    print("🔥 TARS AGENT ONLINE — JOINING LIVEKIT ROOM")
-    await tars_agent(ctx)
+app.include_router(ai_router)
+
+@app.get("/")
+def health():
+    return {"status": "TARS Cloud Brain Online"}
 
 if __name__ == "__main__":
-    asyncio.run(server.run())
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=10000)
