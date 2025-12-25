@@ -1,76 +1,70 @@
 # agent/reasoning.py
 """
 reasoning.py
-Simple wrapper class for calling Gemini models:
-- chat(prompt) -> quick response (standard model)
-- reason(prompt) -> longer/step-by-step response (reasoning model)
+Stable Gemini reasoning wrapper (2025-safe)
+
+- chat(prompt)   → fast response
+- reason(prompt) → step-by-step reasoning
 """
 
 import os
-import asyncio
 from typing import Optional
-
-from app.utils_cleaner import clean_text  # reuse utils from app
 from dotenv import load_dotenv
+
+from app.utils_cleaner import clean_text
 
 load_dotenv()
 
-GEMINI_KEY = os.getenv("GOOGLE_API_KEY", "")
-GEMINI_STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "gemini-1.5-flash")
-GEMINI_REASON_MODEL = os.getenv("GEMINI_REASON_MODEL", "gemini-2.0-flash-thinking")
+# 🔑 API KEY (ONLY from .env)
+GEMINI_KEY = os.getenv("GOOGLE_API_KEY")
 
-# try import google generative ai
-GEMINI_AVAILABLE = False
-try:
-    import google.generativeai as genai
-    genai.configure(api_key=GEMINI_KEY)
-    GEMINI_AVAILABLE = bool(GEMINI_KEY)
-except Exception:
-    GEMINI_AVAILABLE = False
+if not GEMINI_KEY:
+    raise RuntimeError("GOOGLE_API_KEY not set")
+
+# ✅ Correct Gemini SDK
+import google.generativeai as genai
+genai.configure(api_key=GEMINI_KEY)
+
+# ✅ STABLE MODELS (DO NOT CHANGE)
+STANDARD_MODEL = "gemini-1.0-pro"
+REASONING_MODEL = "gemini-1.0-pro"
+
 
 class ReasoningEngine:
-    def __init__(self, standard_model: Optional[str] = None, reason_model: Optional[str] = None):
-        self.standard = standard_model or GEMINI_STANDARD_MODEL
-        self.reason = reason_model or GEMINI_REASON_MODEL
+    def __init__(
+        self,
+        standard_model: Optional[str] = None,
+        reason_model: Optional[str] = None,
+    ):
+        self.standard_model = standard_model or STANDARD_MODEL
+        self.reason_model = reason_model or REASONING_MODEL
 
-    async def _call_gemini(self, model: str, prompt: str, max_output_tokens: int = 512) -> str:
-        if not GEMINI_AVAILABLE:
-            return "[Gemini not available: check GOOGLE_API_KEY]"
+        self.standard_llm = genai.GenerativeModel(self.standard_model)
+        self.reason_llm = genai.GenerativeModel(self.reason_model)
+
+    async def chat(self, prompt: str) -> str:
+        """
+        Fast, normal response
+        """
         try:
-            # adapt to common genai shapes
-            resp = genai.generate_text(model=model, input=prompt, max_output_tokens=max_output_tokens)
-            # attempt to extract text
-            out = getattr(resp, "text", None)
-            if out:
-                return clean_text(out)
-            # older versions: dict with candidates
-            if isinstance(resp, dict):
-                cands = resp.get("candidates")
-                if cands and isinstance(cands, list):
-                    return clean_text(cands[0].get("content") or cands[0].get("message") or str(cands[0]))
-            return clean_text(str(resp))
+            response = self.standard_llm.generate_content(prompt)
+            return clean_text(response.text)
         except Exception as e:
-            return f"[Gemini error] {e}"
+            return f"[Gemini chat error] {e}"
 
-    def chat(self, prompt: str) -> str:
+    async def reason(self, prompt: str) -> str:
         """
-        Synchronous-friendly wrapper for a short reply.
-        Note: it's safe to call from async or sync contexts; we run event loop if needed.
+        Step-by-step reasoning response
         """
-        coro = self._call_gemini(self.standard, prompt, max_output_tokens=300)
-        try:
-            return asyncio.get_event_loop().run_until_complete(coro)
-        except RuntimeError:
-            # if called inside running loop (e.g., agent runtime), return coroutine to be awaited by caller
-            return coro
+        reasoning_prompt = (
+            "You are TARS reasoning engine.\n"
+            "Think step-by-step.\n"
+            "Give a short plan and final answer.\n\n"
+            f"User: {prompt}"
+        )
 
-    def reason(self, prompt: str) -> str:
-        """
-        Use reasoning model for step-by-step output.
-        """
-        p = f"Reason step-by-step and return clear plan + final answer.\nUser: {prompt}\n\nSteps:"
-        coro = self._call_gemini(self.reason, p, max_output_tokens=800)
         try:
-            return asyncio.get_event_loop().run_until_complete(coro)
-        except RuntimeError:
-            return coro
+            response = self.reason_llm.generate_content(reasoning_prompt)
+            return clean_text(response.text)
+        except Exception as e:
+            return f"[Gemini reasoning error] {e}"
