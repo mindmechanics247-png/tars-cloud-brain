@@ -1,6 +1,3 @@
-# =========================
-# Core Backend
-# =========================
 fastapi
 uvicorn[standard]
 python-dotenv
@@ -8,52 +5,12 @@ requests
 pydantic
 aiohttp
 websockets
-python-multipart
 
-# =========================
-# AI / LLM
-# =========================
-google-generativeai==0.7.2
-openai
-tiktoken
+# Gemini
+google-generativeai==0.8.3
 
-# =========================
-# Vision (Cloud-safe)
-# =========================
-opencv-python-headless
-ultralytics
-pillow
-numpy
+# Memory (API based, NOT local vector DB)
+mem0ai
 
-# ❌ MediaPipe REMOVED (causes protobuf conflict on cloud)
-# mediapipe
-
-# =========================
-# Speech
-# =========================
-gtts
-
-# =========================
-# LiveKit Agent Framework
-# =========================
-livekit
-livekit-agents
-livekit-plugins-openai
-livekit-plugins-elevenlabs
-
-# =========================
-# MCP (Model Context Protocol)
-# =========================
-mcp
-pyppeteer
-
-# =========================
-# Memory / Vector Store
-# =========================
-sentence-transformers
-faiss-cpu
-
-# =========================
-# N8N Integration
-# =========================
+# Automation
 pycurl
