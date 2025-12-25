@@ -14,3 +14,8 @@ mem0ai
 
 # Automation
 pycurl
+# LiveKit Agent Framework
+livekit
+livekit-agents
+livekit-plugins-openai
+livekit-plugins-elevenlabs
