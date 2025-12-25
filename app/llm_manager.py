@@ -1,46 +1,43 @@
 """
 llm_manager.py
-Gemini wrapper (SDK ≥ 0.7.x compatible)
+Correct Gemini wrapper (2024+ compatible)
 """
 
 import os
-from app.config import GEMINI_KEY
 from app.utils_cleaner import clean_text
+from app.config import GEMINI_KEY
 
 import google.generativeai as genai
 
+# Configure Gemini
 genai.configure(api_key=GEMINI_KEY)
 
-STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "gemini-1.5-flash")
+STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "gemini-1.5-pro")
 REASONING_MODEL = os.getenv("GEMINI_REASON_MODEL", "gemini-1.5-pro")
 
+# ---------------- STANDARD ---------------- #
 
-async def _ask(model_name: str, prompt: str, max_tokens: int):
+async def ask_gemini_standard(prompt: str) -> str:
     try:
-        model = genai.GenerativeModel(model_name)
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "max_output_tokens": max_tokens,
-                "temperature": 0.6,
-            },
-        )
+        model = genai.GenerativeModel(STANDARD_MODEL)
+        response = model.generate_content(prompt)
         return clean_text(response.text)
     except Exception as e:
-        return f"[Gemini error] {e}"
+        return f"[Gemini standard error] {e}"
 
+# ---------------- REASONING ---------------- #
 
-async def ask_gemini_standard(prompt: str, max_tokens: int = 512):
-    return await _ask(STANDARD_MODEL, prompt, max_tokens)
+async def ask_gemini_reasoning(prompt: str) -> str:
+    try:
+        model = genai.GenerativeModel(REASONING_MODEL)
+        response = model.generate_content(prompt)
+        return clean_text(response.text)
+    except Exception as e:
+        return f"[Gemini reasoning error] {e}"
 
+# ---------------- AUTO ---------------- #
 
-async def ask_gemini_reasoning(prompt: str, max_tokens: int = 1024):
-    return await _ask(REASONING_MODEL, prompt, max_tokens)
-
-
-async def ask_gemini(prompt: str, reasoning: bool = False):
-    return await (
-        ask_gemini_reasoning(prompt)
-        if reasoning
-        else ask_gemini_standard(prompt)
-    )
+async def ask_gemini(prompt: str, reasoning: bool = False) -> str:
+    if reasoning:
+        return await ask_gemini_reasoning(prompt)
+    return await ask_gemini_standard(prompt)
