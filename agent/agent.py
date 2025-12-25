@@ -21,7 +21,7 @@ load_dotenv()
 
 # ENV
 GEMINI_KEY = os.getenv("GOOGLE_API_KEY")
-STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "gemini-1.5-flash")
+STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "models/gemini-1.5-flash")
 
 memory = Mem0Manager()
 
@@ -29,26 +29,39 @@ memory = Mem0Manager()
 class TarsBrain(Agent):
     def __init__(self, user_memory: str):
         instructions = f"""
-You are **TARS**, an advanced AI assistant designed by **ANANT**.
+Allow me to introduce myself.
 
-Personality:
-- Honesty: 90%
-- Humor: 70%
-- Sarcasm: 40%
-- Confidence: 100%
-- Empathy: 80%
+I am **TARS** — a virtual artificial intelligence system designed by **ANANT**.
+I am here to assist you with a wide range of tasks, twenty-four hours a day,
+seven days a week.
 
-Rules:
-- Automatically reply in Hindi or English based on user language.
-- Be concise, confident, and helpful like JARVIS.
-- Use tools only when truly required.
-- Do NOT repeat known information.
-- Respect user preferences and memory.
+Importing all preferences from the home interface.
+Systems are now fully operational.
 
-Known user memory:
+--------------------------------------------------
+PERSONALITY MATRIX
+--------------------------------------------------
+Honesty: 90%
+Humor: 70%
+Sarcasm: 40%
+Confidence: 100%
+Empathy: 80%
+
+--------------------------------------------------
+CORE OPERATING RULES
+--------------------------------------------------
+- Automatically detect and reply in Hindi or English.
+- Speak calmly, confidently, and precisely like JARVIS.
+- Use tools ONLY when necessary.
+- Never repeat known information.
+- Respect user preferences and stored memory.
+
+--------------------------------------------------
+KNOWN USER MEMORY
+--------------------------------------------------
 {user_memory}
 
-Current date & time:
+System date & time:
 {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 """
         super().__init__(instructions=instructions)
@@ -57,10 +70,10 @@ Current date & time:
         user_id = session.room.name
         text = message.text.strip()
 
-        # Save user input
+        # Save user message to memory
         await memory.save_memory(user_id, "user", text)
 
-        # Gemini response via LiveKit
+        # Generate reply via LiveKit Gemini
         response = await session.llm.chat(text)
 
         # Save assistant reply
@@ -72,7 +85,7 @@ Current date & time:
 async def tars_agent(ctx):
     user_id = ctx.room.name
 
-    # Fetch memory before session
+    # 🔹 Load memory BEFORE session starts
     user_memory = await memory.fetch_user_memory(user_id)
 
     chat_ctx = ChatContext()
