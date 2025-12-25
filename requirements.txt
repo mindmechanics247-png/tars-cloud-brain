@@ -7,7 +7,7 @@ aiohttp
 websockets
 
 # Gemini
-google-generativeai==0.8.3
+google-generativeai==0.5.4
 
 # Memory (API based, NOT local vector DB)
 mem0ai
