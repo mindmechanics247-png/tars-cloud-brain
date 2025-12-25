@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # 🔥 Import your existing routers
 from app.router_ai import router as ai_router
-from app.router_vision import router as vision_router
+#from app.router_vision import router as vision_router
 from app.router_robot import router as robot_router
 from app.router_ws import router as ws_router
 
@@ -39,7 +39,7 @@ app.add_middleware(
 # ─────────────────────────────────────────────
 
 app.include_router(ai_router, prefix="/ai", tags=["AI Chat"])
-app.include_router(vision_router, prefix="/vision", tags=["AI Vision"])
+#app.include_router(vision_router, prefix="/vision", tags=["AI Vision"])
 app.include_router(robot_router, prefix="/robot", tags=["Robot Control"])
 app.include_router(ws_router, prefix="/ws", tags=["WebSocket"])
 
