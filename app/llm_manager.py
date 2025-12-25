@@ -1,44 +1,40 @@
+# app/llm_manager.py
 """
-llm_manager.py
-Correct Gemini SDK (2025-safe)
+LLaMA (Groq) wrapper
+- standard: fast replies
+- reasoning: deep reasoning
 """
 
 import os
+from groq import Groq
 from app.utils_cleaner import clean_text
-import google.generativeai as genai
 
-GEMINI_KEY = os.getenv("GOOGLE_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not GROQ_API_KEY:
+    raise RuntimeError("GROQ_API_KEY not set")
 
-if not GEMINI_KEY:
-    raise RuntimeError("GOOGLE_API_KEY not set")
+STANDARD_MODEL = os.getenv("LLAMA_STANDARD_MODEL", "llama3-8b-8192")
+REASON_MODEL = os.getenv("LLAMA_REASON_MODEL", "llama3-8b-8192")
 
-# Configure SDK
-genai.configure(api_key=GEMINI_KEY)
+client = Groq(api_key=GROQ_API_KEY)
 
-# ✅ THESE MODELS WORK (CONFIRMED)
-STANDARD_MODEL = "gemini-1.0-pro"
-REASONING_MODEL = "gemini-1.0-pro"
 
-def _get_model(name: str):
-    return genai.GenerativeModel(name)
+async def ask_llama(prompt: str, reasoning: bool = False) -> str:
+    model = REASON_MODEL if reasoning else STANDARD_MODEL
 
-async def ask_gemini_standard(prompt: str) -> str:
     try:
-        model = _get_model(STANDARD_MODEL)
-        response = model.generate_content(prompt)
-        return clean_text(response.text)
-    except Exception as e:
-        return f"[Gemini error] {e}"
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are TARS, a confident AI assistant designed by ANANT."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.6,
+            max_tokens=600,
+        )
 
-async def ask_gemini_reasoning(prompt: str) -> str:
-    try:
-        model = _get_model(REASONING_MODEL)
-        response = model.generate_content(prompt)
-        return clean_text(response.text)
-    except Exception as e:
-        return f"[Gemini reasoning error] {e}"
+        text = response.choices[0].message.content
+        return clean_text(text)
 
-async def ask_gemini(prompt: str, reasoning: bool = False) -> str:
-    if reasoning:
-        return await ask_gemini_reasoning(prompt)
-    return await ask_gemini_standard(prompt)
+    except Exception as e:
+        return f"[LLaMA error] {e}"

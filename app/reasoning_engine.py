@@ -1,95 +1,39 @@
+# app/reasoning_engine.py
 """
-reasoning_engine.py
-Decides when to use reasoning model and prepares prompts.
+Decides when to use reasoning model
 """
 
 import re
-from typing import Tuple
-from app.llm_manager import ask_gemini
+from app.llm_manager import ask_llama
 from app.personality import get_system_prompt
 
-# ----------------------------
-# Reasoning indicators
-# ----------------------------
+
 REASON_KEYWORDS = [
-    "plan", "steps", "step-by-step", "strategy", "design", "implement",
-    "explain", "why", "reason", "solve", "debug", "optimize",
-    "proposal", "roadmap", "architecture", "multi-step",
-    "timeline", "algorithm", "pseudocode", "write code"
+    "plan", "steps", "explain", "design", "strategy",
+    "how", "why", "architecture", "debug", "analyze"
 ]
 
-TRIGGER_PHRASES = [
-    "enable reasoning",
-    "reasoning mode",
-    "think step-by-step",
-    "use reasoning",
-    "activate brain",
-    "brain mode"
-]
 
-# ----------------------------
-# Heuristic decision
-# ----------------------------
-def needs_reasoning_auto(text: str) -> bool:
-    """
-    Decide automatically whether reasoning is required.
-    """
+def needs_reasoning(text: str) -> bool:
     t = text.lower()
-
-    # Explicit triggers
-    if any(p in t for p in TRIGGER_PHRASES):
+    if len(t.split()) > 20:
         return True
-
-    # Strong reasoning keywords
-    if any(k in t for k in REASON_KEYWORDS):
-        return True
-
-    # Long / complex input
-    if len(t.split()) > 20 or len(t) > 120:
-        return True
-
-    return False
+    return any(k in t for k in REASON_KEYWORDS)
 
 
-# ----------------------------
-# Main response generator
-# ----------------------------
-async def generate_response(
-    user_text: str,
-    explicit_reasoning: bool = False
-) -> Tuple[str, bool]:
-    """
-    Returns:
-        (reply_text, used_reasoning)
-    """
-
+async def generate_response(user_text: str, explicit_reasoning: bool = False):
     system_prompt = get_system_prompt()
-
-    use_reasoning = explicit_reasoning or needs_reasoning_auto(user_text)
+    use_reasoning = explicit_reasoning or needs_reasoning(user_text)
 
     if use_reasoning:
-        prompt = f"""
-{system_prompt}
-
-You are TARS's reasoning brain.
-Think step-by-step internally.
-If tools are useful, mention which tool you'd use (do NOT hallucinate results).
-Then provide the final clear answer.
-
-User request:
-{user_text}
-"""
-        reply = await ask_gemini(prompt, reasoning=True)
+        prompt = (
+            f"{system_prompt}\n"
+            "Think step-by-step. Give a short plan and final answer.\n\n"
+            f"User: {user_text}"
+        )
+        reply = await ask_llama(prompt, reasoning=True)
         return reply, True
 
-    # Fast / standard response
-    prompt = f"""
-{system_prompt}
-
-User:
-{user_text}
-
-Respond clearly, confidently, and concisely.
-"""
-    reply = await ask_gemini(prompt, reasoning=False)
+    prompt = f"{system_prompt}\nUser: {user_text}"
+    reply = await ask_llama(prompt, reasoning=False)
     return reply, False
