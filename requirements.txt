@@ -1,16 +1,13 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-dotenv
 requests
 pydantic
 aiohttp
-
-# Gemini
-google-generativeai==0.7.2
-
-# Memory
-sentence-transformers
-faiss-cpu
-
-# N8N
+websockets
+python-multipart
+numpy
 pycurl
+
+# 🔥 LLaMA via Groq
+groq
