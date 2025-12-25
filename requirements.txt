@@ -5,15 +5,21 @@ requests
 pydantic
 aiohttp
 websockets
+python-multipart
 
-# Gemini
+# Gemini AI
 google-generativeai==0.5.4
 
-# Memory (API based, NOT local vector DB)
-mem0ai
+# Memory
+sentence-transformers
+faiss-cpu
 
 # Automation
 pycurl
+
+# Optional (keep only if actually used)
+openai
+tiktoken
 # LiveKit Agent Framework
 livekit
 livekit-agents
