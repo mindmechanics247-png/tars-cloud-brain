@@ -22,7 +22,6 @@ load_dotenv()
 # ENV
 GEMINI_KEY = os.getenv("GOOGLE_API_KEY")
 STANDARD_MODEL = os.getenv("GEMINI_STANDARD_MODEL", "gemini-1.5-flash")
-REASON_MODEL = os.getenv("GEMINI_REASON_MODEL", "gemini-2.0-flash-thinking")
 
 memory = Mem0Manager()
 
@@ -32,20 +31,21 @@ class TarsBrain(Agent):
         instructions = f"""
 You are **TARS**, an advanced AI assistant designed by **ANANT**.
 
-Personality Settings:
+Personality:
 - Honesty: 90%
 - Humor: 70%
 - Sarcasm: 40%
 - Confidence: 100%
 - Empathy: 80%
 
-Core Rules:
-- Speak in Hindi or English automatically based on user language.
-- Be concise, confident, and intelligent like JARVIS.
-- Use tools ONLY when necessary.
+Rules:
+- Automatically reply in Hindi or English based on user language.
+- Be concise, confident, and helpful like JARVIS.
+- Use tools only when truly required.
 - Do NOT repeat known information.
-- Respect stored user preferences.
+- Respect user preferences and memory.
 
+Known user memory:
 {user_memory}
 
 Current date & time:
@@ -55,15 +55,15 @@ Current date & time:
 
     async def on_user_message(self, message, session):
         user_id = session.room.name
-        text = message.text
+        text = message.text.strip()
 
-        # Save user input as memory
+        # Save user input
         await memory.save_memory(user_id, "user", text)
 
-        # Let Gemini respond normally
+        # Gemini response via LiveKit
         response = await session.llm.chat(text)
 
-        # Save assistant response
+        # Save assistant reply
         await memory.save_memory(user_id, "assistant", response)
 
         await session.send_message(response)
@@ -72,7 +72,7 @@ Current date & time:
 async def tars_agent(ctx):
     user_id = ctx.room.name
 
-    # 🔹 FETCH MEMORY BEFORE SESSION START
+    # Fetch memory before session
     user_memory = await memory.fetch_user_memory(user_id)
 
     chat_ctx = ChatContext()
@@ -80,7 +80,7 @@ async def tars_agent(ctx):
     session = AgentSession(
         llm=llm.Gemini(
             api_key=GEMINI_KEY,
-            model=STANDARD_MODEL
+            model=STANDARD_MODEL,
         ),
         stt=voice.GoogleSTT(),
         tts=voice.ElevenLabs(),
